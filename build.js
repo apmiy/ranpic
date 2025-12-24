@@ -81,6 +81,7 @@ function build() {
         // Copy and Rename
         files.forEach((file, index) => {
             const srcPath = path.join(srcFolder, file);
+            // User requested 1.webp, 2.webp, etc.
             const destPath = path.join(distFolder, `${index + 1}.webp`);
             fs.copyFileSync(srcPath, destPath);
         });
@@ -126,113 +127,91 @@ function build() {
     window.getRandomPicH = function() { return getRandomUrl('h'); };
     window.getRandomPicV = function() { return getRandomUrl('v'); };
 
-    // Detect device type based on user agent
-    function detectDeviceType() {
-        var userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        
-        // Mobile device detection
-        var isMobile = /android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wifi/i.test(userAgent);
-        
-        // Tablet detection
-        var isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/i.test(userAgent);
-        
-        // Desktop detection
-        var isDesktop = !isMobile && !isTablet;
-        
-        console.log('User Agent:', userAgent);
-        console.log('Device Detection - Mobile:', isMobile, 'Tablet:', isTablet, 'Desktop:', isDesktop);
-        
-        // Return appropriate image type
-        if (isMobile) {
-            return 'v'; // Vertical for mobile devices
-        } else if (isTablet) {
-            // For tablets, check screen orientation
-            return window.innerHeight > window.innerWidth ? 'v' : 'h';
-        } else {
-            return 'h'; // Horizontal for desktop by default
-        }
+    // 1. Logic for Background (Customized based on user request)
+    function setRandomBackground() { 
+         // Get random URL using the helper (Dynamic count & domain)
+         const bgUrl = getRandomUrl('h');
+          
+         // Find the background box element 
+         const bgBox = document.getElementById('bg-box'); 
+          
+         if (bgBox) { 
+             // Preload image 
+             const img = new Image(); 
+             img.onload = function() { 
+                 bgBox.style.backgroundImage = \`url('\${bgUrl}')\`; 
+                 bgBox.classList.add('loaded'); 
+                 console.log('Random background loaded:', bgUrl); 
+                  
+                 // Set CSS variables for transparency effects 
+                 document.documentElement.style.setProperty('--card-bg', 'var(--card-bg-transparent)'); 
+                 document.documentElement.style.setProperty('--float-panel-bg', 'var(--float-panel-bg-transparent)'); 
+             }; 
+             img.onerror = function() { 
+                 console.error('Failed to load background image:', bgUrl); 
+             }; 
+             img.src = bgUrl; 
+         } else { 
+             // Fallback: If no #bg-box, check for data-random-bg for backward compatibility/other elements
+             // This keeps the generic functionality available if needed, but prioritizes the user's specific logic above.
+             initGenericBackgrounds();
+         } 
     }
 
-    // Set random image based on device type
-    function setRandomImage() {
-        var deviceType = detectDeviceType();
-        console.log('Selected image type:', deviceType);
-        
-        var imageUrl = getRandomUrl(deviceType);
-        if (!imageUrl) {
-            console.error('No images available for type:', deviceType);
-            return;
-        }
+    // 2. Logic for Image Tags (Generic)
+    function initImgTags() {
+        var imgTags = document.getElementsByTagName('img');
+        for (var i = 0; i < imgTags.length; i++) {
+            var img = imgTags[i];
+            var alt = img.getAttribute('alt');
+            var src = img.getAttribute('src');
 
-        var imgElement = document.getElementById('random-image');
-        if (!imgElement) {
-            console.error('Image element not found');
-            return;
-        }
-
-        // Preload image
-        var img = new Image();
-        img.onload = function() {
-            imgElement.src = imageUrl;
-            imgElement.style.opacity = '1';
-            console.log('Random image loaded:', imageUrl);
-        };
-        img.onerror = function() {
-            console.error('Failed to load image:', imageUrl);
-            // Fallback to other type if available
-            var fallbackType = deviceType === 'h' ? 'v' : 'h';
-            var fallbackUrl = getRandomUrl(fallbackType);
-            if (fallbackUrl) {
-                imgElement.src = fallbackUrl;
-                console.log('Using fallback image:', fallbackUrl);
+            if (alt === 'random:h' || (src && src.indexOf('/random/h') !== -1)) {
+                img.src = getRandomUrl('h');
+            } else if (alt === 'random:v' || (src && src.indexOf('/random/v') !== -1)) {
+                img.src = getRandomUrl('v');
             }
-        };
-        img.src = imageUrl;
+        }
     }
 
-    // Handle window resize for orientation changes
-    function handleResize() {
-        var resizeTimeout;
-        return function() {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(function() {
-                // Reset session state to get new random image on orientation change
-                sessionRandomH = null;
-                sessionRandomV = null;
-                setRandomImage();
-            }, 250);
-        };
+    // Helper for generic data-random-bg (as a backup or secondary feature)
+    function initGenericBackgrounds() {
+        var bgElements = document.querySelectorAll('[data-random-bg]');
+        bgElements.forEach(function(el) {
+            // Skip if it is the bg-box we already handled (though setRandomBackground handles #bg-box specifically)
+            if (el.id === 'bg-box') return;
+
+            var type = el.getAttribute('data-random-bg');
+            if (type === 'h' || type === 'v') {
+                var url = getRandomUrl(type);
+                if (url) {
+                    var img = new Image();
+                    img.onload = function() {
+                        el.style.backgroundImage = 'url("' + url + '")';
+                        el.classList.add('loaded');
+                    };
+                    img.src = url;
+                }
+            }
+        });
     }
 
     function init() {
-        setRandomImage();
-        
-        // Add resize listener for orientation changes
-        window.addEventListener('resize', handleResize());
-        
-        // Add click to refresh functionality
-        var imgElement = document.getElementById('random-image');
-        if (imgElement) {
-            imgElement.addEventListener('click', function() {
-                // Reset session state to get new random image
-                sessionRandomH = null;
-                sessionRandomV = null;
-                imgElement.style.opacity = '0';
-                setTimeout(setRandomImage, 300);
-            });
-        }
+        setRandomBackground();
+        initImgTags();
     }
-
+  
     // Run on initial load 
     if (document.readyState === 'loading') { 
         document.addEventListener('DOMContentLoaded', init); 
     } else { 
         init(); 
-    }
-
+    } 
+  
     // Swup integration
     function setupSwup() {
         if (window.swup && window.swup.hooks) {
+            // Register hook for content replacement
             window.swup.hooks.on('content:replace', init);
             console.log('Random Pic API: Registered with Swup hooks.');
         }
@@ -250,76 +229,69 @@ function build() {
 `;
     fs.writeFileSync(path.join(DIST, 'random.js'), jsContent.trim());
 
-    // Create minimal HTML file
-    createMinimalHtml();
+    // Copy index.html if exists and not empty
+    const indexSrc = path.join(ROOT, 'index.html');
+    if (fs.existsSync(indexSrc)) {
+         const stats = fs.statSync(indexSrc);
+         if (stats.size > 0) {
+             fs.copyFileSync(indexSrc, path.join(DIST, 'index.html'));
+             console.log('Copied index.html to dist');
+         } else {
+             console.log('index.html is empty, creating a demo page in dist...');
+             createDemoHtml();
+         }
+    } else {
+        createDemoHtml();
+    }
     
     console.log('Build complete. Output is in /dist folder.');
 }
 
-function createMinimalHtml() {
+function createDemoHtml() {
     const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Image</title>
+    <title>Static Random Pic API Demo</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        
-        #random-image {
-            max-width: 100vw;
-            max-height: 100vh;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-family: sans-serif;
-            font-size: 16px;
-            opacity: 0.7;
-        }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .card { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+        img { max-width: 100%; height: auto; border-radius: 4px; display: block; background: #eee; min-height: 200px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+        .bg-box { width: 100%; height: 200px; background-size: cover; background-position: center; border-radius: 4px; border: 1px dashed #999; display: flex; align-items: center; justify-content: center; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="loading">Loading...</div>
-    
-    
+    <h1>Static Random Pic API (Client-Side)</h1>
+    <p>This is a static implementation. Images are randomized at build time.</p>
+
+    <div class="card">
+        <h2>Horizontal Image (横屏)</h2>
+        <p>Using <code>&lt;img alt="random:h"&gt;</code>:</p>
+        <!-- Logic: Script finds alt="random:h" and sets src -->
+        <img alt="random:h" title="Random Horizontal Image" />
+        <br>
+        
+        <p>Background Image (<code>data-random-bg="h"</code>):</p>
+        <!-- Logic: Script finds data-random-bg="h" and sets style.backgroundImage -->
+        <div class="bg-box" data-random-bg="h">
+            Background Image
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Vertical Image (竖屏)</h2>
+        <p>Using <code>&lt;img alt="random:v"&gt;</code>:</p>
+        <img alt="random:v" style="max-height: 400px;" title="Random Vertical Image" />
+    </div>
+
+    <!-- Import the single generated script -->
     <script src="random.js"></script>
-    
-    <script>
-        // Remove loading text once image is loaded
-        document.getElementById('random-image').addEventListener('load', function() {
-            var loading = document.querySelector('.loading');
-            if (loading) loading.style.display = 'none';
-        });
-    </script>
 </body>
 </html>`;
-    
     fs.writeFileSync(path.join(DIST, 'index.html'), htmlContent);
-    console.log('Created minimal image-only HTML in dist');
+    console.log('Created demo index.html in dist');
 }
 
 build();
