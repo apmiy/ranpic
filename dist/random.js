@@ -4,7 +4,7 @@
  */
 (function() {
     var counts = {"h":979,"v":3596};
-    var domain = 'https://pic.2x.nz';
+    var domain = '';
     
     // State management for session consistency
     var sessionRandomH = null;
