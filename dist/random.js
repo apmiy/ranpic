@@ -62,11 +62,25 @@
             var img = imgTags[i];
             var alt = img.getAttribute('alt');
             var src = img.getAttribute('src');
+            var url = '';
+
+            img.classList.remove('loaded');
+            img.removeAttribute('src');
 
             if (alt === 'random:h' || (src && src.indexOf('/random/h') !== -1)) {
-                img.src = getRandomUrl('h');
+                url = getRandomUrl('h');
             } else if (alt === 'random:v' || (src && src.indexOf('/random/v') !== -1)) {
-                img.src = getRandomUrl('v');
+                url = getRandomUrl('v');
+            }
+
+            if (url) {
+                img.onload = function() {
+                    this.classList.add('loaded');
+                };
+                img.onerror = function() {
+                    this.classList.remove('loaded');
+                };
+                img.src = url;
             }
         }
     }
