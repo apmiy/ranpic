@@ -33,35 +33,26 @@
     window.getRandomPicH = function() { return getRandomUrl('h'); };
     window.getRandomPicV = function() { return getRandomUrl('v'); };
 
-    // 1. Logic for Background (Customized based on user request)
-    function setRandomBackground() { 
-         // Get random URL using the helper (Dynamic count & domain)
-         const bgUrl = getRandomUrl('h');
-          
-         // Find the background box element 
-         const bgBox = document.getElementById('bg-box'); 
-          
-         if (bgBox) { 
-             // Preload image 
-             const img = new Image(); 
-             img.onload = function() { 
-                 bgBox.style.backgroundImage = `url('${bgUrl}')`; 
-                 bgBox.classList.add('loaded'); 
-                 console.log('Random background loaded:', bgUrl); 
-                  
-                 // Set CSS variables for transparency effects 
-                 document.documentElement.style.setProperty('--card-bg', 'var(--card-bg-transparent)'); 
-                 document.documentElement.style.setProperty('--float-panel-bg', 'var(--float-panel-bg-transparent)'); 
-             }; 
-             img.onerror = function() { 
-                 console.error('Failed to load background image:', bgUrl); 
-             }; 
-             img.src = bgUrl; 
-         } else { 
-             // Fallback: If no #bg-box, check for data-random-bg for backward compatibility/other elements
-             // This keeps the generic functionality available if needed, but prioritizes the user's specific logic above.
-             initGenericBackgrounds();
-         } 
+    // 1. Logic for Background Tags (Generic)
+    function initGenericBackgrounds() {
+        var bgElements = document.querySelectorAll('[data-random-bg]');
+        bgElements.forEach(function(el) {
+            var type = el.getAttribute('data-random-bg');
+            if (type === 'h' || type === 'v') {
+                var url = getRandomUrl(type);
+                if (url) {
+                    var img = new Image();
+                    img.onload = function() {
+                        el.style.backgroundImage = 'url("' + url + '")';
+                        el.classList.add('loaded');
+                    };
+                    img.onerror = function() {
+                        console.error('Failed to load background image:', url);
+                    };
+                    img.src = url;
+                }
+            }
+        });
     }
 
     // 2. Logic for Image Tags (Generic)
@@ -80,30 +71,8 @@
         }
     }
 
-    // Helper for generic data-random-bg (as a backup or secondary feature)
-    function initGenericBackgrounds() {
-        var bgElements = document.querySelectorAll('[data-random-bg]');
-        bgElements.forEach(function(el) {
-            // Skip if it is the bg-box we already handled (though setRandomBackground handles #bg-box specifically)
-            if (el.id === 'bg-box') return;
-
-            var type = el.getAttribute('data-random-bg');
-            if (type === 'h' || type === 'v') {
-                var url = getRandomUrl(type);
-                if (url) {
-                    var img = new Image();
-                    img.onload = function() {
-                        el.style.backgroundImage = 'url("' + url + '")';
-                        el.classList.add('loaded');
-                    };
-                    img.src = url;
-                }
-            }
-        });
-    }
-
     function init() {
-        setRandomBackground();
+        initGenericBackgrounds();
         initImgTags();
     }
   
